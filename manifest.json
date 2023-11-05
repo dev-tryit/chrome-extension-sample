@@ -3,15 +3,19 @@
   "name": "마켓비 Parser",
   "version": "1.0",
   "description": "마켓비의 이미지 및 정보를 다운로드하기 위한 파서",
-  "permissions": ["tabs", "activeTab", "storage", "scripting"],
+  "permissions": [
+    "tabs",
+    "activeTab",
+    "storage",
+    "scripting",
+    "downloads",
+    "unlimitedStorage"
+  ],
   "icons": {
     "16": "images/icon16.png",
     "48": "images/icon48.png",
     "64": "images/icon64.png",
     "128": "images/icon128.png"
-  },
-  "background": {
-    "service_worker": "background.js"
   },
   "action": {
     "default_popup": "popup.html"

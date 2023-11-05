@@ -1,124 +1,144 @@
-document.getElementById("parseButton").addEventListener("click", async () => {
-  function getStorage(key) {
-    return new Promise((resolve, reject) => {
-      chrome.storage.sync.get([key], (value) => {
-        if (chrome.runtime.lastError) {
-          return reject(chrome.runtime.lastError);
-        }
-        return resolve(value[key]);
-      });
+document
+  .getElementById("downloadTextButton")
+  .addEventListener("click", async () => {
+    //탭 열어서 제품 정보 파싱하여 다운로드하기
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
     });
-  }
-
-  function waitForDataWithTimeout(fetcher) {
-    let timer; // 타이머 변수
-
-    return new Promise((resolve, reject) => {
-      timer = setInterval(() => {
-        fetcher.then((data) => {
-          if (data) {
-            clearTimeout(timer);
-            timer = undefined;
-            resolve(data);
-          }
-        });
-      }, 2000);
-    });
-  }
-
-  //product_no 얻기
-  chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
     chrome.scripting.executeScript({
-      target: { tabId: tabs[0].id },
+      target: { tabId: tab.id },
       function: function () {
-        function setStorage(item) {
-          return new Promise((resolve, reject) => {
-            chrome.storage.sync.set(item, () => {
-              if (chrome.runtime.lastError) {
-                return reject(chrome.runtime.lastError);
-              }
-              return resolve();
-            });
-          });
+        //함수 정의
+        function downloadTextFile(fileName, text) {
+          const blob = new Blob([text], { type: "text/plain" });
+          const url = URL.createObjectURL(blob);
+
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+
+          URL.revokeObjectURL(url);
         }
 
-        const queryParams = new URL(document.location).searchParams;
-        const productNo = queryParams.get("product_no");
-        setStorage({ product_no: productNo });
+        function getValueByTags(querySelector, keyToFind) {
+          const tags = document.querySelectorAll(querySelector);
+          for (const tag of tags) {
+            const text = tag.innerText;
+            if (text.includes(keyToFind)) {
+              const valueToFind = tag.children[1].innerText.trim();
+              return valueToFind;
+            }
+          }
+        }
+
+        const title = document.querySelector("div.infoArea > h3").innerText;
+        const customPrice = parseFloat(
+          document
+            .querySelector("#span_product_price_custom")
+            .innerText.replace(/[^\d.-]/g, "")
+        );
+        const salesPrice = parseFloat(
+          document
+            .querySelector("#span_product_price_text")
+            .innerText.replace(/[^\d.-]/g, "")
+        );
+        const code = getValueByTags("tr.xans-record-", "상품코드");
+
+        downloadTextFile(
+          "product.csv",
+          `제품명, ${title}\n소비자가, ${customPrice}\n판매가, ${salesPrice}\n상품코드, ${code}`
+        );
       },
     });
   });
-  const productNo = await waitForDataWithTimeout(getStorage("product_no"));
 
-  //경로 변경하기
-  await chrome.tabs.query(
-    { active: true, currentWindow: true },
-    function (tabs) {
-      chrome.tabs.update(
-        tabs[0].id,
-        {
-          url:
-            "https://marketb.kr/product/image_zoom.html?product_no=" +
-            productNo,
-        },
-        function (tab) {
-          function setStorage(item) {
-            return new Promise((resolve, reject) => {
-              chrome.storage.sync.set(item, () => {
-                if (chrome.runtime.lastError) {
-                  return reject(chrome.runtime.lastError);
-                }
-                return resolve();
-              });
-            });
+document
+  .getElementById("downloadImageButton")
+  .addEventListener("click", async () => {
+    //함수 정의
+    function getStorage(key) {
+      return new Promise((resolve, reject) => {
+        chrome.storage.local.get([key], (value) => {
+          if (chrome.runtime.lastError) {
+            return reject(chrome.runtime.lastError);
           }
-
-          setStorage({ tab2Status: "started" });
-        }
-      );
-    }
-  );
-  const tab2Status = await waitForDataWithTimeout(getStorage("tab2Status"));
-
-  //데이터 파싱하기
-  await chrome.tabs.query(
-    { active: true, currentWindow: true },
-    function (tabs) {
-      chrome.scripting.executeScript({
-        target: { tabId: tabs[0].id },
-        function: function () {
-          function getValueByTags(querySelector, keyToFind) {
-            const tags = document.querySelectorAll(querySelector);
-            for (const tag of tags) {
-              const text = tag.innerText;
-              if (text.includes(keyToFind)) {
-                const valueToFind = tag.children[1].innerText.trim();
-                return valueToFind;
-              }
-            }
-          }
-
-          const title = document.querySelector("div.infoArea > h3").innerText;
-          // alert("title" + title);
-          const customPrice = parseFloat(
-            document
-              .querySelector("#span_product_price_custom")
-              .innerText.replace(/[^\d.-]/g, "")
-          );
-          // alert("customPrice" + customPrice);
-          const salesPrice = parseFloat(
-            document
-              .querySelector("#span_product_price_text")
-              .innerText.replace(/[^\d.-]/g, "")
-          );
-          // alert("salesPrice" + salesPrice);
-          const code = getValueByTags("tr.xans-record-", "상품코드");
-          // alert("code" + code);
-
-          //TODO: 추가 정보 파싱
-          //TODO: 이미지 다운로드
-        },
+          return resolve(value[key]);
+        });
       });
     }
-  );
-});
+
+    function setStorage(item) {
+      return new Promise((resolve, reject) => {
+        chrome.storage.local.set(item, () => {
+          if (chrome.runtime.lastError) {
+            return reject(chrome.runtime.lastError);
+          }
+          return resolve();
+        });
+      });
+    }
+
+    function waitForDataWithTimeout(fetcher) {
+      let timer; // 타이머 변수
+
+      return new Promise((resolve, reject) => {
+        timer = setInterval(() => {
+          fetcher.then((data) => {
+            if (data) {
+              clearTimeout(timer);
+              timer = undefined;
+              resolve(data);
+            }
+          });
+        }, 2000);
+      });
+    }
+
+    //탭 열어서 이미지 url 모으기
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      function: function () {
+        const thumbnailImageUrl = document.querySelector(
+          ".keyImg > .thumbnail .BigImage"
+        ).src;
+        const thumbnailImageUrls = Array.from(
+          document.querySelectorAll(".ThumbImage")
+        ).map((img) =>
+          img.src.replaceAll("tiny", "big").replaceAll("small", "big")
+        );
+        const detailImageUrls = Array.from(
+          document.querySelectorAll("div.cont img")
+        ).map((img) => img.src);
+        setStorage({
+          imageUrlObj: {
+            thumbnailImageUrls: [thumbnailImageUrl, ...thumbnailImageUrls],
+            detailImageUrls: [...detailImageUrls],
+          },
+        });
+      },
+    });
+    const imageUrlObj = await waitForDataWithTimeout(getStorage("imageUrlObj"));
+
+    //이미지 url 다운로드 (chrome.downloads.download이어서 위 코드랑 분리하였음)
+    imageUrlObj.thumbnailImageUrls.forEach((imageUrl, index) => {
+      const fileName = `thumbnailImageUrl_${index + 1}.jpg`;
+      chrome.downloads.download({
+        url: imageUrl,
+        filename: fileName,
+      });
+    });
+    imageUrlObj.detailImageUrls.forEach((imageUrl, index) => {
+      const fileName = `detailImageUrl_${index + 1}.jpg`;
+      chrome.downloads.download({
+        url: imageUrl,
+        filename: fileName,
+      });
+    });
+  });
