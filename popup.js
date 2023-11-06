@@ -70,17 +70,6 @@ document
       });
     }
 
-    function setStorage(item) {
-      return new Promise((resolve, reject) => {
-        chrome.storage.local.set(item, () => {
-          if (chrome.runtime.lastError) {
-            return reject(chrome.runtime.lastError);
-          }
-          return resolve();
-        });
-      });
-    }
-
     function waitForDataWithTimeout(fetcher) {
       let timer; // 타이머 변수
 
@@ -105,6 +94,17 @@ document
     chrome.scripting.executeScript({
       target: { tabId: tab.id },
       function: function () {
+        function setStorage(item) {
+          return new Promise((resolve, reject) => {
+            chrome.storage.local.set(item, () => {
+              if (chrome.runtime.lastError) {
+                return reject(chrome.runtime.lastError);
+              }
+              return resolve();
+            });
+          });
+        }
+
         const thumbnailImageUrl = document.querySelector(
           ".keyImg > .thumbnail .BigImage"
         ).src;
