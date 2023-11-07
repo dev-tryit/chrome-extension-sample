@@ -35,21 +35,37 @@ document
         }
 
         const title = document.querySelector("div.infoArea > h3").innerText;
-        const customPrice = parseFloat(
-          document
-            .querySelector("#span_product_price_custom")
-            .innerText.replace(/[^\d.-]/g, "")
-        );
+
+	let customPrice;
+	try{
+        	customPrice = parseFloat(
+        	  document
+         	   .querySelector("#span_product_price_custom")
+         	   .innerText.replace(/[^\d.-]/g, "")
+        	);
+	}
+	catch(e){
+	}
+
         const salesPrice = parseFloat(
           document
             .querySelector("#span_product_price_text")
             .innerText.replace(/[^\d.-]/g, "")
         );
+
+	let discountPrice;
+	if(customPrice) {
+		discountPrice = customPrice-salesPrice;
+	}
+	else {
+		discountPrice = 0;
+	}
+
         const code = getValueByTags("tr.xans-record-", "상품코드");
 
         downloadTextFile(
           "product.csv",
-          `제품명, ${title}\n소비자가, ${customPrice}\n판매가, ${salesPrice}\n상품코드, ${code}`
+          `제품명, ${title}\n소비자가, ${customPrice}\n판매가, ${salesPrice}\n상품코드, ${code}\n할인가, ${discountPrice}`
         );
       },
     });
@@ -125,6 +141,7 @@ document
       },
     });
     const imageUrlObj = await waitForDataWithTimeout(getStorage("imageUrlObj"));
+    chrome.storage.local.clear();
 
     //이미지 url 다운로드 (chrome.downloads.download이어서 위 코드랑 분리하였음)
     imageUrlObj.thumbnailImageUrls.forEach((imageUrl, index) => {
