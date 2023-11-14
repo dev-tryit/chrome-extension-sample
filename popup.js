@@ -1,4 +1,141 @@
 document
+  .getElementById("hashTagToInsertButton")
+  .addEventListener("click", async () => {
+    function setStorage(item) {
+      return new Promise((resolve, reject) => {
+        chrome.storage.local.set(item, () => {
+          if (chrome.runtime.lastError) {
+            return reject(chrome.runtime.lastError);
+          }
+          return resolve();
+        });
+      });
+    }
+
+    const hashTag = document.querySelector("#hashTagInput").value;
+    setStorage({ hashTag: hashTag });
+
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      function: function () {
+        function sleep(ms) {
+          return new Promise((r) => setTimeout(r, ms));
+        }
+        //함수 정의
+        function getStorage(key) {
+          return new Promise((resolve, reject) => {
+            chrome.storage.local.get([key], (value) => {
+              if (chrome.runtime.lastError) {
+                return reject(chrome.runtime.lastError);
+              }
+              return resolve(value[key]);
+            });
+          });
+        }
+
+        getStorage("hashTag").then(function (str) {
+          const list = str.split(" ");
+          var timerId = setInterval(async function () {
+            const hashTagStr = list.pop().toString();
+            if (!hashTagStr) {
+              timerId && clearTimeout(timerId);
+              return;
+            }
+
+            const tag = document.querySelector(
+              'input[placeholder="태그를 입력해주세요."]'
+            );
+            if (!tag) return;
+            tag.value = hashTagStr.replaceAll("#", "");
+
+            tag.focus();
+            tag.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 13 }));
+            tag.dispatchEvent(new KeyboardEvent("keyup", { keyCode: 13 }));
+
+            await sleep(500);
+
+            tag.focus();
+            tag.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 13 }));
+            tag.dispatchEvent(new KeyboardEvent("keyup", { keyCode: 13 }));
+          }, 2000);
+        });
+      },
+    });
+  });
+
+document
+  .getElementById("hashTagToMakeButton")
+  .addEventListener("click", async () => {
+    //함수 정의
+    function getStorage(key) {
+      return new Promise((resolve, reject) => {
+        chrome.storage.local.get([key], (value) => {
+          if (chrome.runtime.lastError) {
+            return reject(chrome.runtime.lastError);
+          }
+          return resolve(value[key]);
+        });
+      });
+    }
+
+    function waitForDataWithTimeout(fetcher) {
+      let timer; // 타이머 변수
+
+      return new Promise((resolve, reject) => {
+        timer = setInterval(() => {
+          fetcher.then((data) => {
+            if (data) {
+              clearTimeout(timer);
+              timer = undefined;
+              resolve(data);
+            }
+          });
+        }, 2000);
+      });
+    }
+
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      function: function () {
+        function setStorage(item) {
+          return new Promise((resolve, reject) => {
+            chrome.storage.local.set(item, () => {
+              if (chrome.runtime.lastError) {
+                return reject(chrome.runtime.lastError);
+              }
+              return resolve();
+            });
+          });
+        }
+
+        const list = document.querySelectorAll(
+          "#INTRODUCE > div > div.jqaBjC05ww > ul > li"
+        );
+
+        let tagStr = "";
+        for (const each of list) {
+          if (each.textContent) tagStr += " " + each.textContent;
+        }
+
+        setStorage({ tagStr: tagStr });
+      },
+    });
+
+    const tagStr = await waitForDataWithTimeout(getStorage("tagStr"));
+    chrome.storage.local.clear();
+
+    document.querySelector("#hashTag").innerText = tagStr;
+  });
+
+document
   .getElementById("downloadTextButton")
   .addEventListener("click", async () => {
     //탭 열어서 제품 정보 파싱하여 다운로드하기
@@ -36,16 +173,14 @@ document
 
         const title = document.querySelector("div.infoArea > h3").innerText;
 
-	let customPrice;
-	try{
-        	customPrice = parseFloat(
-        	  document
-         	   .querySelector("#span_product_price_custom")
-         	   .innerText.replace(/[^\d.-]/g, "")
-        	);
-	}
-	catch(e){
-	}
+        let customPrice;
+        try {
+          customPrice = parseFloat(
+            document
+              .querySelector("#span_product_price_custom")
+              .innerText.replace(/[^\d.-]/g, "")
+          );
+        } catch (e) {}
 
         const salesPrice = parseFloat(
           document
@@ -53,13 +188,12 @@ document
             .innerText.replace(/[^\d.-]/g, "")
         );
 
-	let discountPrice;
-	if(customPrice) {
-		discountPrice = customPrice-salesPrice;
-	}
-	else {
-		discountPrice = 0;
-	}
+        let discountPrice;
+        if (customPrice) {
+          discountPrice = customPrice - salesPrice;
+        } else {
+          discountPrice = 0;
+        }
 
         const code = getValueByTags("tr.xans-record-", "상품코드");
 
