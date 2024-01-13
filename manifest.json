@@ -11,6 +11,9 @@
     "downloads",
     "unlimitedStorage"
   ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "icons": {
     "16": "images/icon16.png",
     "48": "images/icon48.png",

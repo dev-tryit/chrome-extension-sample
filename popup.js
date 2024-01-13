@@ -1,4 +1,185 @@
 document
+  .getElementById("insertProductInfo")
+  .addEventListener("click", async () => {
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      function: async function () {
+        function sleep(ms) {
+          return new Promise((r) => setTimeout(r, ms));
+        }
+        function getStorage(key) {
+          return new Promise((resolve, reject) => {
+            chrome.storage.local.get([key], (value) => {
+              if (chrome.runtime.lastError) {
+                return reject(chrome.runtime.lastError);
+              }
+              return resolve(value[key]);
+            });
+          });
+        }
+        function typeLetterByLetter(selector, text, interval) {
+          let input = document.querySelector(selector);
+          let i = 0;
+
+          function typing() {
+            if (i < text.length) {
+              document.querySelector(selector).focus();
+              input.value += text.charAt(i);
+              i++;
+              document.querySelector(selector).blur();
+              setTimeout(typing, interval);
+            }
+          }
+
+          typing();
+        }
+
+        const productToRemember = await getStorage("productToRemember");
+        // alert(`productToRemember:${JSON.stringify(productToRemember)}`);
+        document
+          .querySelectorAll("input[name='recent_delivery_info']")
+          .forEach((radio) => (radio.checked = false));
+        document.querySelector("#sameaddr1").checked = true;
+        document.querySelector("#rname").value = productToRemember.name;
+        document.querySelector("#omessage").value =
+          productToRemember.addressMemo;
+
+        document.querySelector("#input_mile").value = document.querySelector(
+          "#total_order_sale_price_view"
+        ).textContent;
+        // typeLetterByLetter("#input_mile", document.querySelector('#total_order_sale_price_view').textContent, 200);
+       
+        const areaCodes = [
+          "02",
+          "031",
+          "032",
+          "033",
+          "041",
+          "042",
+          "043",
+          "051",
+          "052",
+          "053",
+          "054",
+          "055",
+          "061",
+          "062",
+          "063",
+          "064",
+        ];
+        const phoneNumber1 = productToRemember.phoneNumber.split("-")[0];
+        const phoneNumber2 = productToRemember.phoneNumber.split("-")[1];
+        const phoneNumber3 = productToRemember.phoneNumber.split("-")[2];
+        const isLocal = areaCodes.includes(phoneNumber1);
+        if (isLocal) {
+          document.querySelector("#rphone1_1").value = phoneNumber1;
+          document.querySelector("#rphone1_2").value = phoneNumber2;
+          document.querySelector("#rphone1_3").value = phoneNumber3;
+        } else {
+          document.querySelector("#rphone2_1").value = phoneNumber1;
+          document.querySelector("#rphone2_2").value = phoneNumber2;
+          document.querySelector("#rphone2_3").value = phoneNumber3;
+        }
+
+        document.querySelector('#rzipcode1').value = '';
+        document.querySelector('#raddr1').value = productToRemember.address1;
+        document.querySelector('#raddr2').value = productToRemember.address2;
+      },
+    });
+  });
+document
+  .getElementById("rememberProductInfo")
+  .addEventListener("click", async () => {
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      function: function () {
+        function setStorage(item) {
+          return new Promise((resolve, reject) => {
+            chrome.storage.local.set(item, () => {
+              if (chrome.runtime.lastError) {
+                return reject(chrome.runtime.lastError);
+              }
+              return resolve();
+            });
+          });
+        }
+        function getTdValueByHeader(headerText) {
+          var tableList = document.querySelectorAll("table");
+          for (const table of tableList) {
+            var trList = table.querySelectorAll("tr");
+            for (const tr of trList) {
+              var th = tr.querySelector("th");
+              if (th.textContent.trim() === headerText) {
+                var td = tr.querySelector("td");
+                return td.innerText.replaceAll(/<\/br>/g, "\n");
+              }
+            }
+          }
+          return "";
+        }
+
+        const name = getTdValueByHeader("수취인명").trim();
+        const phoneNumber = getTdValueByHeader("연락처1").trim();
+        const address1 = getTdValueByHeader("배송지").split("\n")[0];
+        const address2 = getTdValueByHeader("배송지").split("\n")[1];
+        const addressMemo = getTdValueByHeader("배송메모").trim();
+
+        setStorage({
+          productToRemember: {
+            name,
+            phoneNumber,
+            address1,
+            address2,
+            addressMemo,
+          },
+        });
+      },
+    });
+  });
+
+document
+  .getElementById("moveMarketBePage")
+  .addEventListener("click", async () => {
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      function: function () {
+        function getTdValueByHeader(headerText) {
+          var tableList = document.querySelectorAll("table");
+          for (const table of tableList) {
+            var trList = table.querySelectorAll("tr");
+            for (const tr of trList) {
+              var th = tr.querySelector("th");
+              if (th.textContent.trim() === headerText) {
+                var td = tr.querySelector("td");
+                return td.textContent;
+              }
+            }
+          }
+          return "";
+        }
+
+        const productName = getTdValueByHeader("상품명")
+          .replaceAll("MKB", "")
+          .trim();
+        const url = `https://marketb.kr/product/search.html?keyword=${productName}`;
+        chrome.runtime.sendMessage({ action: "openUrl", url });
+      },
+    });
+  });
+
+document
   .getElementById("hashTagToInsertButton")
   .addEventListener("click", async () => {
     function setStorage(item) {
